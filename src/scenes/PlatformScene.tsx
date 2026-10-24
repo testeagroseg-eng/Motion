@@ -1,4 +1,104 @@
-import {Background,ImagePanel,Label,Title,useLayout} from '../components/SceneKit';
-import {smooth} from '../animations/motion';
-import type {SceneProps} from './types';
-export function PlatformScene({config,frame,title}:SceneProps){const {width,height,wide,pad}=useLayout();const q=smooth(frame,5,45);const rot=Math.sin(frame/65)*9-5;const src=config.assets.platform;return <><Background config={config}/><div style={{position:'absolute',left:pad,top:height*.17,width:wide?650:width-pad*2}}><Label color={config.theme.accent}>AgroSegPlay</Label><Title text={title} frame={frame} size={wide?92:110}/></div><div style={{position:'absolute',left:wide?850:pad,top:wide?230:height*.47,width:wide?930:width-pad*2,height:wide?560:600,perspective:1700,opacity:q}}><div style={{position:'relative',height:'100%',transform:`rotateY(${rot}deg) rotateX(${8-q*4}deg) translateZ(${(1-q)*-200}px)`,background:'#142b20',borderRadius:22,border:'2px solid #789a5c88',padding:12,boxShadow:'0 50px 120px #000a,0 0 90px #9dce3814'}}><ImagePanel src={src||'assets/field.jpg'} frame={frame} style={{height:'100%',borderRadius:12}}/>{!src&&<div style={{position:'absolute',inset:12,display:'flex',alignItems:'end',padding:42,background:'linear-gradient(transparent,#071b10da)',borderRadius:12,fontSize:49,fontWeight:600,lineHeight:1.05}}>Agro.<br/>Tecnologia.<br/>Conhecimento.</div>}</div><div style={{height:3,background:config.theme.accent,opacity:.45,margin:'35px 8%',filter:'blur(3px)',transform:`rotateY(${rot}deg)`}}/></div><div style={{position:'absolute',left:pad,top:wide?height*.78:height*.85,fontSize:wide?28:31,color:'#c6d4c6'}}>O conhecimento que impulsiona o agro.</div></>;}
+import {
+  Background,
+  ImagePanel,
+  Label,
+  Title,
+  useLayout,
+} from "../components/SceneKit";
+import { smooth } from "../animations/motion";
+import type { SceneProps } from "./types";
+export function PlatformScene({ config, frame, title }: SceneProps) {
+  const { width, height, wide, pad } = useLayout();
+  const q = smooth(frame, 5, 45);
+  const rot = Math.sin(frame / 65) * 9 - 5;
+  const src = config.assets.platform;
+  return (
+    <>
+      <Background config={config} />
+      <div
+        style={{
+          position: "absolute",
+          left: pad,
+          top: height * 0.17,
+          width: wide ? 650 : width - pad * 2,
+        }}
+      >
+        <Label color={config.theme.accent}>AgroSegPlay</Label>
+        <Title text={title} frame={frame} size={wide ? 92 : 110} />
+      </div>
+      <div
+        style={{
+          position: "absolute",
+          left: wide ? 850 : pad,
+          top: wide ? 230 : height * 0.47,
+          width: wide ? 930 : width - pad * 2,
+          height: wide ? 560 : 600,
+          perspective: 1700,
+          opacity: q,
+        }}
+      >
+        <div
+          style={{
+            position: "relative",
+            height: "100%",
+            transform: `rotateY(${rot}deg) rotateX(${8 - q * 4}deg) translateZ(${(1 - q) * -200}px)`,
+            background: "#142b20",
+            borderRadius: 22,
+            border: "2px solid #789a5c88",
+            padding: 12,
+            boxShadow: "0 50px 120px #000a,0 0 90px #9dce3814",
+          }}
+        >
+          <ImagePanel
+            src={src || "assets/field.jpg"}
+            frame={frame}
+            style={{ height: "100%", borderRadius: 12 }}
+          />
+          {!src && (
+            <div
+              style={{
+                position: "absolute",
+                inset: 12,
+                display: "flex",
+                alignItems: "end",
+                padding: 42,
+                background: "linear-gradient(transparent,#071b10da)",
+                borderRadius: 12,
+                fontSize: 49,
+                fontWeight: 600,
+                lineHeight: 1.05,
+              }}
+            >
+              Agro.
+              <br />
+              Tecnologia.
+              <br />
+              Conhecimento.
+            </div>
+          )}
+        </div>
+        <div
+          style={{
+            height: 3,
+            background: config.theme.accent,
+            opacity: 0.45,
+            margin: "35px 8%",
+            filter: "blur(3px)",
+            transform: `rotateY(${rot}deg)`,
+          }}
+        />
+      </div>
+      <div
+        style={{
+          position: "absolute",
+          left: pad,
+          top: wide ? height * 0.78 : height * 0.85,
+          fontSize: wide ? 28 : 31,
+          color: "#c6d4c6",
+        }}
+      >
+        O conhecimento que impulsiona o agro.
+      </div>
+    </>
+  );
+}

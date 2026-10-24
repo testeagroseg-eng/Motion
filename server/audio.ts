@@ -1,4 +1,75 @@
-import {writeFile} from 'node:fs/promises';
+import { writeFile } from "node:fs/promises";
 /** Original procedural score. No third-party recording; every sweep follows a scene cut. */
-export async function generateScore(path:string,duration:number,cuts:number[]){const sr=48000,n=Math.ceil(duration*sr),wav=Buffer.alloc(44+n*2);wav.write('RIFF');wav.writeUInt32LE(36+n*2,4);wav.write('WAVEfmt ',8);wav.writeUInt32LE(16,16);wav.writeUInt16LE(1,20);wav.writeUInt16LE(1,22);wav.writeUInt32LE(sr,24);wav.writeUInt32LE(sr*2,28);wav.writeUInt16LE(2,32);wav.writeUInt16LE(16,34);wav.write('data',36);wav.writeUInt32LE(n*2,40);const chords=[[110,164.8138,220],[130.8128,196,261.6256],[87.3071,130.8128,174.6141],[98,146.8324,196]];let noiseState=2019;
- for(let i=0;i<n;i++){const t=i/sr;const chord=chords[Math.floor(t/5)%4];const chordTime=t%5;const chordEnv=Math.min(1,chordTime/1.1,(5-chordTime)/.8);let s=0;for(const f of chord)s+=.018*Math.sin(2*Math.PI*f*t)*chordEnv;const beat=t%.75;const note=[440,523.251,659.255,783.991,659.255,523.251][Math.floor(t/.75)%6];s+=.032*Math.sin(2*Math.PI*note*beat)*Math.exp(-beat*9)*Math.min(1,beat*150);const kick=t%1.5;if(kick<.19)s+=.032*Math.sin(2*Math.PI*(52*kick+2*(1-Math.exp(-kick*25))))*Math.exp(-kick*20);for(const cut of cuts){const u=t-cut+.12;if(u>=0&&u<.45){noiseState=(noiseState*1664525+1013904223)>>>0;s+=.026*((noiseState/4294967296)*2-1)*Math.sin(Math.PI*u/.45)**2;}if(t>=cut&&t<cut+.28)s+=.04*Math.sin(2*Math.PI*45*(t-cut))*Math.exp(-(t-cut)*16);}s*=Math.min(1,t/.5,(duration-t)/.9);wav.writeInt16LE(Math.round(Math.max(-1,Math.min(1,s))*32767),44+i*2);}await writeFile(path,wav);}
+export async function generateScore(
+  path: string,
+  duration: number,
+  cuts: number[],
+) {
+  const sr = 48000,
+    n = Math.ceil(duration * sr),
+    wav = Buffer.alloc(44 + n * 2);
+  wav.write("RIFF");
+  wav.writeUInt32LE(36 + n * 2, 4);
+  wav.write("WAVEfmt ", 8);
+  wav.writeUInt32LE(16, 16);
+  wav.writeUInt16LE(1, 20);
+  wav.writeUInt16LE(1, 22);
+  wav.writeUInt32LE(sr, 24);
+  wav.writeUInt32LE(sr * 2, 28);
+  wav.writeUInt16LE(2, 32);
+  wav.writeUInt16LE(16, 34);
+  wav.write("data", 36);
+  wav.writeUInt32LE(n * 2, 40);
+  const chords = [
+    [110, 164.8138, 220],
+    [130.8128, 196, 261.6256],
+    [87.3071, 130.8128, 174.6141],
+    [98, 146.8324, 196],
+  ];
+  let noiseState = 2019;
+  for (let i = 0; i < n; i++) {
+    const t = i / sr;
+    const chord = chords[Math.floor(t / 5) % 4];
+    const chordTime = t % 5;
+    const chordEnv = Math.min(1, chordTime / 1.1, (5 - chordTime) / 0.8);
+    let s = 0;
+    for (const f of chord)
+      s += 0.018 * Math.sin(2 * Math.PI * f * t) * chordEnv;
+    const beat = t % 0.75;
+    const note = [440, 523.251, 659.255, 783.991, 659.255, 523.251][
+      Math.floor(t / 0.75) % 6
+    ];
+    s +=
+      0.032 *
+      Math.sin(2 * Math.PI * note * beat) *
+      Math.exp(-beat * 9) *
+      Math.min(1, beat * 150);
+    const kick = t % 1.5;
+    if (kick < 0.19)
+      s +=
+        0.032 *
+        Math.sin(2 * Math.PI * (52 * kick + 2 * (1 - Math.exp(-kick * 25)))) *
+        Math.exp(-kick * 20);
+    for (const cut of cuts) {
+      const u = t - cut + 0.12;
+      if (u >= 0 && u < 0.45) {
+        noiseState = (noiseState * 1664525 + 1013904223) >>> 0;
+        s +=
+          0.026 *
+          ((noiseState / 4294967296) * 2 - 1) *
+          Math.sin((Math.PI * u) / 0.45) ** 2;
+      }
+      if (t >= cut && t < cut + 0.28)
+        s +=
+          0.04 *
+          Math.sin(2 * Math.PI * 45 * (t - cut)) *
+          Math.exp(-(t - cut) * 16);
+    }
+    s *= Math.min(1, t / 0.5, (duration - t) / 0.9);
+    wav.writeInt16LE(
+      Math.round(Math.max(-1, Math.min(1, s)) * 32767),
+      44 + i * 2,
+    );
+  }
+  await writeFile(path, wav);
+}

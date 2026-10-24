@@ -1,0 +1,22 @@
+{
+  "passed": true,
+  "checks": [
+    "player playback",
+    "format switching",
+    "asset controls",
+    "caption safeguards",
+    "project save and reload",
+    "mobile width",
+    "real MP4 export via button",
+    "download response"
+  ],
+  "job": {
+    "id": "d6873c1e-3a4b-413b-8709-ef6a22616bc5",
+    "progress": 1,
+    "stage": "Concluído",
+    "status": "complete",
+    "filename": "AgroSegPlay-short-d6873c1e.mp4",
+    "download": "/api/download/AgroSegPlay-short-d6873c1e.mp4"
+  },
+  "pageErrors": []
+}

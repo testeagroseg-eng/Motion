@@ -1,36 +1,892 @@
-import {useEffect,useRef,useState} from 'react';
-import {Player,PlayerRef} from '@remotion/player';
-import {ArrowDownToLine,ArrowRight,AudioLines,Check,ChevronDown,Clapperboard,Clock3,Film,ImagePlus,Info,Layers3,LoaderCircle,Maximize2,Monitor,Pause,Play,Save,Settings2,SlidersHorizontal,Smartphone,Sparkles,Subtitles,Upload,Volume2} from 'lucide-react';
-import {Campaign} from './compositions/Campaign';
-import {defaults,frames,size,timeline,ProjectConfig} from './config/project';
-type RenderJob={id:string;progress:number;stage:string;status:string;error?:string;download?:string};
-const names=['Impacto inicial','O desafio','A plataforma','Universo de conteúdos','Experiência digital','Condições de acesso','Assinatura da marca'];
-const time=(f:number)=>`${Math.floor(f/30/60).toString().padStart(2,'0')}:${Math.floor(f/30%60).toString().padStart(2,'0')}`;
-async function json<T>(url:string,options?:RequestInit):Promise<T>{const r=await fetch(url,options);const v=await r.json();if(!r.ok)throw new Error(v.error||'Falha na solicitação.');return v;}
-export function Studio(){const [config,setConfig]=useState<ProjectConfig>(defaults);const [selected,setSelected]=useState(0);const [tab,setTab]=useState('scene');const [frame,setFrame]=useState(45);const [playing,setPlaying]=useState(false);const [notice,setNotice]=useState('');const [error,setError]=useState('');const [job,setJob]=useState<RenderJob|null>(null);const [uploading,setUploading]=useState('');const [volume,setVolume]=useState(.8);const player=useRef<PlayerRef>(null);const total=frames(config);const scene=timeline(config)[selected];const dims=size(config);const active=timeline(config).findIndex(s=>frame>=s.from&&frame<s.from+s.length);const patch=(v:Partial<ProjectConfig>)=>setConfig(c=>({...c,...v}));
- useEffect(()=>{json<ProjectConfig>('/api/project').then(setConfig).catch(e=>setError(e.message));},[]);
- useEffect(()=>{const p=player.current;if(!p)return;const update=(e:{detail:{frame:number}})=>setFrame(e.detail.frame);const play=()=>setPlaying(true);const pause=()=>setPlaying(false);p.addEventListener('frameupdate',update);p.addEventListener('play',play);p.addEventListener('pause',pause);return()=>{p.removeEventListener('frameupdate',update);p.removeEventListener('play',play);p.removeEventListener('pause',pause);};},[]);
- useEffect(()=>{if(!job||job.status!=='running')return;const id=setInterval(()=>json<RenderJob>(`/api/render/${job.id}`).then(j=>{setJob(j);if(j.status==='error')setError(j.error||'Falha ao exportar.');}).catch(e=>{setError(e.message);clearInterval(id);}),900);return()=>clearInterval(id);},[job?.id,job?.status]);
- const seek=(f:number)=>player.current?.seekTo(Math.max(0,Math.min(total-1,f)));
- const changeScene=(key:'title'|'subtitle'|'duration',value:string|number)=>patch({scenes:config.scenes.map((s,i)=>i===selected?{...s,[key]:value}:s)});
- const save=async()=>{try{await json('/api/project',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(config)});setNotice('Projeto salvo');setTimeout(()=>setNotice(''),3000);}catch(e){setError((e as Error).message);}};
- const render=async()=>{setError('');try{setJob(await json<RenderJob>('/api/render',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(config)}));}catch(e){setError((e as Error).message);}};
- const upload=async(kind:string,file?:File)=>{if(!file)return;setUploading(kind);setError('');try{const body=new FormData();body.append('kind',kind);body.append('file',file);const data=await json<{path:string;captions:ProjectConfig['captions']}>('/api/upload',{method:'POST',body});if(kind==='audio')patch({audio:{...config.audio,[config.format==='short'?'shortNarration':'narration']:data.path}});else if(kind==='captions')patch({captions:data.captions,captionsEnabled:true});else if(kind==='course')patch({assets:{...config.assets,courses:[...config.assets.courses,{label:`Trilha ${config.assets.courses.length+1}`,src:data.path}].slice(0,5)}});else patch({assets:{...config.assets,[kind]:data.path}});setNotice('Arquivo importado');}catch(e){setError((e as Error).message);}finally{setUploading('');}};
- const uploadButton=(kind:string,label:string,accept:string)=> <label className="upload-button"><Upload size={15}/>{uploading===kind?'Importando…':label}<input type="file" accept={accept} disabled={!!uploading} onChange={e=>void upload(kind,e.target.files?.[0])}/></label>;
- return <div className="studio-shell"><header className="topbar"><a className="studio-brand" href="#"><span className="brand-icon"><Clapperboard size={21}/></span><span>AgroSeg<span className="accent">Play</span><small>CINEMATIC STUDIO</small></span></a><nav className="topnav"><span className="nav-active">Projeto</span><span className="project-path">Campanha institucional <span>/</span> Filme principal</span></nav><div className="header-actions"><span className="save-status">{notice||'Projeto editável'}</span><button className="icon-button" title="Salvar projeto" aria-label="Salvar projeto" onClick={()=>void save()}><Save size={18}/></button><button className="export-button" onClick={()=>void render()} disabled={job?.status==='running'}>{job?.status==='running'?<LoaderCircle className="spin" size={17}/>:<ArrowDownToLine size={17}/>}Exportar MP4</button></div></header>
- <div className="workspace"><aside className="scene-rail"><div className="section-heading"><span><Layers3 size={17}/> Cenas do filme</span><span className="count">07</span></div><p className="muted rail-intro">Uma história. Sete movimentos.</p><div className="scene-list">{timeline(config).map((s,i)=><button className={`scene-item ${selected===i?'selected':''}`} key={s.id} onClick={()=>{setSelected(i);seek(s.from+15);setTab('scene');}}><span className={`scene-thumb thumb-${i}`}><span>{String(i+1).padStart(2,'0')}</span>{i===0?<Sparkles size={23}/>:i===3?<Layers3 size={23}/>:i===6?<ArrowRight size={23}/>:<Film size={23}/>}</span><span className="scene-details"><strong>{names[i]}</strong><small>{time(s.from)} <i>—</i> {(s.length/30).toFixed(1)}s</small></span>{active===i&&<span className="playing-dot"/>}</button>)}</div><div className="rail-bottom"><span className="small-label">DURAÇÃO TOTAL</span><div><Clock3 size={17}/><strong>{(total/30).toFixed(1)}s</strong><span>30 FPS</span></div></div></aside>
- <main className="canvas-area"><div className="canvas-toolbar"><div><span className="eyebrow">AGROSEGPLAY / FILME DE CAMPANHA</span><h1>O conhecimento que<br className="mobile-break"/> impulsiona o agro<span>.</span></h1></div><div className="format-toggle" role="group" aria-label="Formato do vídeo">{(['vertical','horizontal','short'] as const).map(f=><button key={f} onClick={()=>{patch({format:f});seek(45);}} className={config.format===f?'active':''}>{f==='horizontal'?<Monitor size={16}/>:f==='short'?<Clock3 size={16}/>:<Smartphone size={16}/>}<span>{f==='vertical'?'9:16':f==='horizontal'?'16:9':'15s'}</span></button>)}</div></div>
- <div className={`preview-stage ${config.format==='horizontal'?'landscape':''}`}><div className="stage-grid"/><div className="stage-meta"><span><span className="live-dot"/> PRÉ-VISUALIZAÇÃO</span><span>{dims.width} × {dims.height}</span></div><div className="film-frame"><Player ref={player} component={Campaign} inputProps={{config}} durationInFrames={total} compositionWidth={dims.width} compositionHeight={dims.height} fps={30} initialFrame={45} style={{width:'100%',height:'100%'}} controls={false} loop initialVolume={.8} clickToPlay={false} showVolumeControls errorFallback={({error})=><div role="alert" className="player-error">Não foi possível carregar a prévia: {error.message}</div>}/></div><div className="frame-note">{config.format==='short'?'CORTE DE 15 SEGUNDOS':config.format==='horizontal'?'VERSÃO HORIZONTAL':'VERSÃO VERTICAL'}<span>H.264 / AAC</span></div></div>
- <div className="transport"><button aria-label={playing?'Pausar':'Reproduzir'} className="play-button" onClick={()=>playing?player.current?.pause():player.current?.play()}>{playing?<Pause size={17} fill="currentColor"/>:<Play size={17} fill="currentColor"/>}</button><span className="timecode">{time(frame)} <i>/ {time(total)}</i></span><input aria-label="Posição no vídeo" className="scrubber" type="range" min="0" max={total-1} value={Math.min(frame,total-1)} onChange={e=>seek(+e.target.value)}/><Volume2 size={17}/><input className="volume-slider" type="range" aria-label="Volume de reprodução" min="0" max="1" step=".01" value={volume} onChange={e=>{setVolume(+e.target.value);player.current?.setVolume(+e.target.value);}}/><button className="icon-button" aria-label="Tela cheia" onClick={()=>player.current?.requestFullscreen()}><Maximize2 size={16}/></button></div>
- <div className="timeline-heading"><span><Film size={15}/> Linha do tempo</span><span>{config.format==='short'?'15 segundos · corte rápido':'7 cenas · edição quadro a quadro'}</span></div><div className="timeline-track">{timeline(config).map((s,i)=><button key={s.id} style={{flex:s.length}} className={`timeline-clip clip-${i} ${selected===i?'selected':''}`} onClick={()=>{setSelected(i);seek(s.from);}} title={names[i]}><span>{String(i+1).padStart(2,'0')}</span><small>{names[i]}</small><div className="clip-line"/></button>)}<div className="playhead" style={{left:`${frame/total*100}%`}}/></div>
- {job&&<div className={`render-progress ${job.status}`} role="status"><div><span>{job.status==='complete'?<Check size={18}/>:<LoaderCircle size={18} className={job.status==='running'?'spin':''}/>} {job.stage}</span><strong>{Math.round(job.progress*100)}%</strong></div><progress max="1" value={job.progress}/>{job.download&&<a href={job.download} download><ArrowDownToLine size={16}/> Baixar MP4 renderizado</a>}</div>}
- {error&&<div className="error-notice" role="alert">{error}<button onClick={()=>setError('')} aria-label="Fechar erro">×</button></div>}
- </main>
- <aside className="inspector"><div className="section-heading"><span><SlidersHorizontal size={17}/> Direção do filme</span><Settings2 size={16}/></div><div className="inspector-tabs">{[['scene','Cena'],['brand','Marca & mídia'],['audio','Áudio']].map(([key,label])=><button key={key} className={tab===key?'active':''} onClick={()=>setTab(key)}>{label}</button>)}</div>
- {tab==='scene'&&<><div className="inspector-section"><div className="inspector-title"><span className="eyebrow">CENA {String(selected+1).padStart(2,'0')}</span><h2>{names[selected]}</h2></div><label className="field-label">Texto principal<textarea rows={3} value={scene.title} maxLength={140} onChange={e=>changeScene('title',e.target.value)}/></label><label className="field-label">Texto de apoio<textarea rows={2} value={scene.subtitle} maxLength={180} onChange={e=>changeScene('subtitle',e.target.value)}/></label><div className="duration-field"><label className="field-label">Duração da cena<div className="number-input"><Clock3 size={16}/><input aria-label="Duração da cena" type="number" min="1" max="20" step=".1" disabled={config.format==='short'} value={config.format==='short'?scene.length/30:scene.duration} onChange={e=>changeScene('duration',Math.max(1,Math.min(20,+e.target.value||1)))}/><span>seg</span></div></label></div>{config.format==='short'&&<p className="hint">O corte rápido usa tempos fixos que somam 15 segundos.</p>}</div>
- {scene.id==='offer'&&<div className="inspector-section"><h3>Oferta comercial</h3><label className="check-row"><input type="checkbox" checked={config.offer.verified} onChange={e=>patch({offer:{...config.offer,verified:e.target.checked,enabled:e.target.checked?config.offer.enabled:false}})}/>Conferi os preços no site oficial</label><label className="check-row"><input type="checkbox" checked={config.offer.enabled} disabled={!config.offer.verified} onChange={e=>patch({offer:{...config.offer,enabled:e.target.checked}})}/>Exibir oferta no vídeo</label><div className="price-grid"><label className="field-label">De (R$)<input value={config.offer.previous} onChange={e=>patch({offer:{...config.offer,previous:e.target.value}})}/></label><label className="field-label">Por (R$)<input value={config.offer.current} onChange={e=>patch({offer:{...config.offer,current:e.target.value}})}/></label></div><p className="hint">Os valores vieram do briefing e aguardam conferência no site. Sem confirmação, o vídeo apresenta apenas o convite para conhecer a plataforma.</p></div>}
- <div className="inspector-section direction-note"><Sparkles size={18}/><div><strong>Movimento com propósito</strong><p>Câmera, tipografia e profundidade calculadas por quadro. A mesma composição na prévia e na exportação.</p></div></div></>}
- {tab==='brand'&&<><div className="inspector-section"><h3>Paleta da campanha</h3><div className="color-options">{([['green','Verde'],['accent','Destaque'],['ink','Fundo']] as const).map(([key,label])=><label key={key}><input type="color" value={config.theme[key]} onChange={e=>patch({theme:{...config.theme,[key]:e.target.value}})}/><span>{label}</span></label>)}</div><p className="hint">Paleta provisória. Ajuste com as cores oficiais após consultar o site.</p></div><div className="inspector-section"><h3>Ativos oficiais</h3><p className="hint">Importe imagens reais em PNG, JPEG ou WebP. O logotipo mantém suas proporções.</p><div className="asset-row"><span>Logotipo</span><span className={config.assets.logo?'asset-ready':'asset-pending'}>{config.assets.logo?'Importado':'Pendente'}</span></div>{uploadButton('logo','Importar logotipo','image/png,image/jpeg,image/webp')}<div className="asset-row"><span>Captura da plataforma</span><span className={config.assets.platform?'asset-ready':'asset-pending'}>{config.assets.platform?'Importada':'Pendente'}</span></div>{uploadButton('platform','Importar screenshot','image/png,image/jpeg,image/webp')}<div className="asset-row"><span>Imagens das trilhas</span><span>{config.assets.courses.length} / 5</span></div>{uploadButton('course','Adicionar imagem real','image/png,image/jpeg,image/webp')}{config.assets.courses.map((c,i)=><label className="field-label" key={i}>Trilha {i+1}<input value={c.label} onChange={e=>patch({assets:{...config.assets,courses:config.assets.courses.map((x,j)=>j===i?{...x,label:e.target.value}:x)}})}/></label>)}</div></>}
- {tab==='audio'&&<><div className="inspector-section"><h3><AudioLines size={16}/> Narração</h3><div className="audio-card"><span className="audio-wave">▂▅▃▇▅▂▆▄▇▃▅▂</span><div><strong>Áudios enviados</strong><small>{config.format==='short'?'Recorte das falas 01 e 06':'Seis falas · ordem original'}</small></div></div>{uploadButton('audio','Substituir narração','audio/*')}<label className="field-label">Volume da voz <span>{Math.round(config.audio.voiceVolume*100)}%</span><input type="range" min="0" max="1.5" step=".01" value={config.audio.voiceVolume} onChange={e=>patch({audio:{...config.audio,voiceVolume:+e.target.value}})}/></label><p className="hint">Na versão de 35s, as falas foram ajustadas para 1,10×. Uma nova locução natural não foi gerada.</p></div><div className="inspector-section"><h3>Trilha & sound design</h3><label className="check-row"><input type="checkbox" checked={config.audio.music} onChange={e=>patch({audio:{...config.audio,music:e.target.checked}})}/>Trilha instrumental original</label><label className="field-label">Intensidade da trilha<input type="range" min="0" max="1" step=".01" value={config.audio.musicVolume} onChange={e=>patch({audio:{...config.audio,musicVolume:+e.target.value}})}/></label><p className="hint">Ducking automático aplicado à trilha durante a exportação.</p></div><div className="inspector-section"><h3><Subtitles size={16}/> Legendas animadas</h3><label className="check-row"><input type="checkbox" checked={config.captionsEnabled} disabled={!config.captions.length} onChange={e=>patch({captionsEnabled:e.target.checked})}/>Exibir legendas revisadas</label>{uploadButton('captions','Importar SRT / VTT / JSON','.srt,.vtt,.json')}<p className="hint">{config.captions.length?`${config.captions.length} marcações importadas. Confira os tempos na prévia.`:'A transcrição automática está indisponível. Importe legendas revisadas para sincronizar a fala.'}</p></div></>}
- <div className="verification-note"><Info size={17}/><p>Ativos e oferta aguardam validação no site oficial. Nenhum preço ou número de aulas é exibido por padrão.</p></div></aside></div><footer className="app-footer"><span><span className="live-dot"/> Produção determinística</span><span>React · Remotion · Three.js · FFmpeg</span><span>AgroSegPlay / Cinematic Experience</span></footer></div>;
+import { useEffect, useRef, useState } from "react";
+import { Player, PlayerRef } from "@remotion/player";
+import {
+  ArrowDownToLine,
+  ArrowRight,
+  AudioLines,
+  Check,
+  ChevronDown,
+  Clapperboard,
+  Clock3,
+  Film,
+  ImagePlus,
+  Info,
+  Layers3,
+  LoaderCircle,
+  Maximize2,
+  Monitor,
+  Pause,
+  Play,
+  Save,
+  Settings2,
+  SlidersHorizontal,
+  Smartphone,
+  Sparkles,
+  Subtitles,
+  Upload,
+  Volume2,
+} from "lucide-react";
+import { Campaign } from "./compositions/Campaign";
+import {
+  defaults,
+  frames,
+  size,
+  timeline,
+  ProjectConfig,
+} from "./config/project";
+type RenderJob = {
+  id: string;
+  progress: number;
+  stage: string;
+  status: string;
+  error?: string;
+  download?: string;
+};
+const names = [
+  "Impacto inicial",
+  "O desafio",
+  "A plataforma",
+  "Universo de conteúdos",
+  "Experiência digital",
+  "Condições de acesso",
+  "Assinatura da marca",
+];
+const time = (f: number) =>
+  `${Math.floor(f / 30 / 60)
+    .toString()
+    .padStart(2, "0")}:${Math.floor((f / 30) % 60)
+    .toString()
+    .padStart(2, "0")}`;
+async function json<T>(url: string, options?: RequestInit): Promise<T> {
+  const r = await fetch(url, options);
+  const v = await r.json();
+  if (!r.ok) throw new Error(v.error || "Falha na solicitação.");
+  return v;
+}
+export function Studio() {
+  const [config, setConfig] = useState<ProjectConfig>(defaults);
+  const [selected, setSelected] = useState(0);
+  const [tab, setTab] = useState("scene");
+  const [frame, setFrame] = useState(45);
+  const [playing, setPlaying] = useState(false);
+  const [notice, setNotice] = useState("");
+  const [error, setError] = useState("");
+  const [job, setJob] = useState<RenderJob | null>(null);
+  const [uploading, setUploading] = useState("");
+  const [volume, setVolume] = useState(0.8);
+  const player = useRef<PlayerRef>(null);
+  const total = frames(config);
+  const scene = timeline(config)[selected];
+  const dims = size(config);
+  const active = timeline(config).findIndex(
+    (s) => frame >= s.from && frame < s.from + s.length,
+  );
+  const patch = (v: Partial<ProjectConfig>) =>
+    setConfig((c) => ({ ...c, ...v }));
+  useEffect(() => {
+    json<ProjectConfig>("/api/project")
+      .then(setConfig)
+      .catch((e) => setError(e.message));
+  }, []);
+  useEffect(() => {
+    const p = player.current;
+    if (!p) return;
+    const update = (e: { detail: { frame: number } }) =>
+      setFrame(e.detail.frame);
+    const play = () => setPlaying(true);
+    const pause = () => setPlaying(false);
+    p.addEventListener("frameupdate", update);
+    p.addEventListener("play", play);
+    p.addEventListener("pause", pause);
+    return () => {
+      p.removeEventListener("frameupdate", update);
+      p.removeEventListener("play", play);
+      p.removeEventListener("pause", pause);
+    };
+  }, []);
+  useEffect(() => {
+    if (!job || job.status !== "running") return;
+    const id = setInterval(
+      () =>
+        json<RenderJob>(`/api/render/${job.id}`)
+          .then((j) => {
+            setJob(j);
+            if (j.status === "error") setError(j.error || "Falha ao exportar.");
+          })
+          .catch((e) => {
+            setError(e.message);
+            clearInterval(id);
+          }),
+      900,
+    );
+    return () => clearInterval(id);
+  }, [job?.id, job?.status]);
+  const seek = (f: number) =>
+    player.current?.seekTo(Math.max(0, Math.min(total - 1, f)));
+  const changeScene = (
+    key: "title" | "subtitle" | "duration",
+    value: string | number,
+  ) =>
+    patch({
+      scenes: config.scenes.map((s, i) =>
+        i === selected ? { ...s, [key]: value } : s,
+      ),
+    });
+  const save = async () => {
+    try {
+      await json("/api/project", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(config),
+      });
+      setNotice("Projeto salvo");
+      setTimeout(() => setNotice(""), 3000);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+  const render = async () => {
+    setError("");
+    try {
+      setJob(
+        await json<RenderJob>("/api/render", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(config),
+        }),
+      );
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+  const upload = async (kind: string, file?: File) => {
+    if (!file) return;
+    setUploading(kind);
+    setError("");
+    try {
+      const body = new FormData();
+      body.append("kind", kind);
+      body.append("file", file);
+      const data = await json<{
+        path: string;
+        captions: ProjectConfig["captions"];
+      }>("/api/upload", { method: "POST", body });
+      if (kind === "audio")
+        patch({
+          audio: {
+            ...config.audio,
+            [config.format === "short" ? "shortNarration" : "narration"]:
+              data.path,
+          },
+        });
+      else if (kind === "captions")
+        patch({ captions: data.captions, captionsEnabled: true });
+      else if (kind === "course")
+        patch({
+          assets: {
+            ...config.assets,
+            courses: [
+              ...config.assets.courses,
+              {
+                label: `Trilha ${config.assets.courses.length + 1}`,
+                src: data.path,
+              },
+            ].slice(0, 5),
+          },
+        });
+      else patch({ assets: { ...config.assets, [kind]: data.path } });
+      setNotice("Arquivo importado");
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setUploading("");
+    }
+  };
+  const uploadButton = (kind: string, label: string, accept: string) => (
+    <label className="upload-button">
+      <Upload size={15} />
+      {uploading === kind ? "Importando…" : label}
+      <input
+        type="file"
+        accept={accept}
+        disabled={!!uploading}
+        onChange={(e) => void upload(kind, e.target.files?.[0])}
+      />
+    </label>
+  );
+  return (
+    <div className="studio-shell">
+      <header className="topbar">
+        <a className="studio-brand" href="#">
+          <span className="brand-icon">
+            <Clapperboard size={21} />
+          </span>
+          <span>
+            AgroSeg<span className="accent">Play</span>
+            <small>CINEMATIC STUDIO</small>
+          </span>
+        </a>
+        <nav className="topnav">
+          <span className="nav-active">Projeto</span>
+          <span className="project-path">
+            Campanha institucional <span>/</span> Filme principal
+          </span>
+        </nav>
+        <div className="header-actions">
+          <span className="save-status">{notice || "Projeto editável"}</span>
+          <button
+            className="icon-button"
+            title="Salvar projeto"
+            aria-label="Salvar projeto"
+            onClick={() => void save()}
+          >
+            <Save size={18} />
+          </button>
+          <button
+            className="export-button"
+            onClick={() => void render()}
+            disabled={job?.status === "running"}
+          >
+            {job?.status === "running" ? (
+              <LoaderCircle className="spin" size={17} />
+            ) : (
+              <ArrowDownToLine size={17} />
+            )}
+            Exportar MP4
+          </button>
+        </div>
+      </header>
+      <div className="workspace">
+        <aside className="scene-rail">
+          <div className="section-heading">
+            <span>
+              <Layers3 size={17} /> Cenas do filme
+            </span>
+            <span className="count">07</span>
+          </div>
+          <p className="muted rail-intro">Uma história. Sete movimentos.</p>
+          <div className="scene-list">
+            {timeline(config).map((s, i) => (
+              <button
+                className={`scene-item ${selected === i ? "selected" : ""}`}
+                key={s.id}
+                onClick={() => {
+                  setSelected(i);
+                  seek(s.from + 15);
+                  setTab("scene");
+                }}
+              >
+                <span className={`scene-thumb thumb-${i}`}>
+                  <span>{String(i + 1).padStart(2, "0")}</span>
+                  {i === 0 ? (
+                    <Sparkles size={23} />
+                  ) : i === 3 ? (
+                    <Layers3 size={23} />
+                  ) : i === 6 ? (
+                    <ArrowRight size={23} />
+                  ) : (
+                    <Film size={23} />
+                  )}
+                </span>
+                <span className="scene-details">
+                  <strong>{names[i]}</strong>
+                  <small>
+                    {time(s.from)} <i>—</i> {(s.length / 30).toFixed(1)}s
+                  </small>
+                </span>
+                {active === i && <span className="playing-dot" />}
+              </button>
+            ))}
+          </div>
+          <div className="rail-bottom">
+            <span className="small-label">DURAÇÃO TOTAL</span>
+            <div>
+              <Clock3 size={17} />
+              <strong>{(total / 30).toFixed(1)}s</strong>
+              <span>30 FPS</span>
+            </div>
+          </div>
+        </aside>
+        <main className="canvas-area">
+          <div className="canvas-toolbar">
+            <div>
+              <span className="eyebrow">AGROSEGPLAY / FILME DE CAMPANHA</span>
+              <h1>
+                O conhecimento que
+                <br className="mobile-break" /> impulsiona o agro<span>.</span>
+              </h1>
+            </div>
+            <div
+              className="format-toggle"
+              role="group"
+              aria-label="Formato do vídeo"
+            >
+              {(["vertical", "horizontal", "short"] as const).map((f) => (
+                <button
+                  key={f}
+                  onClick={() => {
+                    patch({ format: f });
+                    seek(45);
+                  }}
+                  className={config.format === f ? "active" : ""}
+                >
+                  {f === "horizontal" ? (
+                    <Monitor size={16} />
+                  ) : f === "short" ? (
+                    <Clock3 size={16} />
+                  ) : (
+                    <Smartphone size={16} />
+                  )}
+                  <span>
+                    {f === "vertical"
+                      ? "9:16"
+                      : f === "horizontal"
+                        ? "16:9"
+                        : "15s"}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div
+            className={`preview-stage ${config.format === "horizontal" ? "landscape" : ""}`}
+          >
+            <div className="stage-grid" />
+            <div className="stage-meta">
+              <span>
+                <span className="live-dot" /> PRÉ-VISUALIZAÇÃO
+              </span>
+              <span>
+                {dims.width} × {dims.height}
+              </span>
+            </div>
+            <div className="film-frame">
+              <Player
+                ref={player}
+                component={Campaign}
+                inputProps={{ config }}
+                durationInFrames={total}
+                compositionWidth={dims.width}
+                compositionHeight={dims.height}
+                fps={30}
+                initialFrame={45}
+                style={{ width: "100%", height: "100%" }}
+                controls={false}
+                loop
+                initialVolume={0.8}
+                clickToPlay={false}
+                showVolumeControls
+                errorFallback={({ error }) => (
+                  <div role="alert" className="player-error">
+                    Não foi possível carregar a prévia: {error.message}
+                  </div>
+                )}
+              />
+            </div>
+            <div className="frame-note">
+              {config.format === "short"
+                ? "CORTE DE 15 SEGUNDOS"
+                : config.format === "horizontal"
+                  ? "VERSÃO HORIZONTAL"
+                  : "VERSÃO VERTICAL"}
+              <span>H.264 / AAC</span>
+            </div>
+          </div>
+          <div className="transport">
+            <button
+              aria-label={playing ? "Pausar" : "Reproduzir"}
+              className="play-button"
+              onClick={() =>
+                playing ? player.current?.pause() : player.current?.play()
+              }
+            >
+              {playing ? (
+                <Pause size={17} fill="currentColor" />
+              ) : (
+                <Play size={17} fill="currentColor" />
+              )}
+            </button>
+            <span className="timecode">
+              {time(frame)} <i>/ {time(total)}</i>
+            </span>
+            <input
+              aria-label="Posição no vídeo"
+              className="scrubber"
+              type="range"
+              min="0"
+              max={total - 1}
+              value={Math.min(frame, total - 1)}
+              onChange={(e) => seek(+e.target.value)}
+            />
+            <Volume2 size={17} />
+            <input
+              className="volume-slider"
+              type="range"
+              aria-label="Volume de reprodução"
+              min="0"
+              max="1"
+              step=".01"
+              value={volume}
+              onChange={(e) => {
+                setVolume(+e.target.value);
+                player.current?.setVolume(+e.target.value);
+              }}
+            />
+            <button
+              className="icon-button"
+              aria-label="Tela cheia"
+              onClick={() => player.current?.requestFullscreen()}
+            >
+              <Maximize2 size={16} />
+            </button>
+          </div>
+          <div className="timeline-heading">
+            <span>
+              <Film size={15} /> Linha do tempo
+            </span>
+            <span>
+              {config.format === "short"
+                ? "15 segundos · corte rápido"
+                : "7 cenas · edição quadro a quadro"}
+            </span>
+          </div>
+          <div className="timeline-track">
+            {timeline(config).map((s, i) => (
+              <button
+                key={s.id}
+                style={{ flex: s.length }}
+                className={`timeline-clip clip-${i} ${selected === i ? "selected" : ""}`}
+                onClick={() => {
+                  setSelected(i);
+                  seek(s.from);
+                }}
+                title={names[i]}
+              >
+                <span>{String(i + 1).padStart(2, "0")}</span>
+                <small>{names[i]}</small>
+                <div className="clip-line" />
+              </button>
+            ))}
+            <div
+              className="playhead"
+              style={{ left: `${(frame / total) * 100}%` }}
+            />
+          </div>
+          {job && (
+            <div className={`render-progress ${job.status}`} role="status">
+              <div>
+                <span>
+                  {job.status === "complete" ? (
+                    <Check size={18} />
+                  ) : (
+                    <LoaderCircle
+                      size={18}
+                      className={job.status === "running" ? "spin" : ""}
+                    />
+                  )}{" "}
+                  {job.stage}
+                </span>
+                <strong>{Math.round(job.progress * 100)}%</strong>
+              </div>
+              <progress max="1" value={job.progress} />
+              {job.download && (
+                <a href={job.download} download>
+                  <ArrowDownToLine size={16} /> Baixar MP4 renderizado
+                </a>
+              )}
+            </div>
+          )}
+          {error && (
+            <div className="error-notice" role="alert">
+              {error}
+              <button onClick={() => setError("")} aria-label="Fechar erro">
+                ×
+              </button>
+            </div>
+          )}
+        </main>
+        <aside className="inspector">
+          <div className="section-heading">
+            <span>
+              <SlidersHorizontal size={17} /> Direção do filme
+            </span>
+            <Settings2 size={16} />
+          </div>
+          <div className="inspector-tabs">
+            {[
+              ["scene", "Cena"],
+              ["brand", "Marca & mídia"],
+              ["audio", "Áudio"],
+            ].map(([key, label]) => (
+              <button
+                key={key}
+                className={tab === key ? "active" : ""}
+                onClick={() => setTab(key)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          {tab === "scene" && (
+            <>
+              <div className="inspector-section">
+                <div className="inspector-title">
+                  <span className="eyebrow">
+                    CENA {String(selected + 1).padStart(2, "0")}
+                  </span>
+                  <h2>{names[selected]}</h2>
+                </div>
+                <label className="field-label">
+                  Texto principal
+                  <textarea
+                    rows={3}
+                    value={scene.title}
+                    maxLength={140}
+                    onChange={(e) => changeScene("title", e.target.value)}
+                  />
+                </label>
+                <label className="field-label">
+                  Texto de apoio
+                  <textarea
+                    rows={2}
+                    value={scene.subtitle}
+                    maxLength={180}
+                    onChange={(e) => changeScene("subtitle", e.target.value)}
+                  />
+                </label>
+                <div className="duration-field">
+                  <label className="field-label">
+                    Duração da cena
+                    <div className="number-input">
+                      <Clock3 size={16} />
+                      <input
+                        aria-label="Duração da cena"
+                        type="number"
+                        min="1"
+                        max="20"
+                        step=".1"
+                        disabled={config.format === "short"}
+                        value={
+                          config.format === "short"
+                            ? scene.length / 30
+                            : scene.duration
+                        }
+                        onChange={(e) =>
+                          changeScene(
+                            "duration",
+                            Math.max(1, Math.min(20, +e.target.value || 1)),
+                          )
+                        }
+                      />
+                      <span>seg</span>
+                    </div>
+                  </label>
+                </div>
+                {config.format === "short" && (
+                  <p className="hint">
+                    O corte rápido usa tempos fixos que somam 15 segundos.
+                  </p>
+                )}
+              </div>
+              {scene.id === "offer" && (
+                <div className="inspector-section">
+                  <h3>Oferta comercial</h3>
+                  <label className="check-row">
+                    <input
+                      type="checkbox"
+                      checked={config.offer.verified}
+                      onChange={(e) =>
+                        patch({
+                          offer: {
+                            ...config.offer,
+                            verified: e.target.checked,
+                            enabled: e.target.checked
+                              ? config.offer.enabled
+                              : false,
+                          },
+                        })
+                      }
+                    />
+                    Conferi os preços no site oficial
+                  </label>
+                  <label className="check-row">
+                    <input
+                      type="checkbox"
+                      checked={config.offer.enabled}
+                      disabled={!config.offer.verified}
+                      onChange={(e) =>
+                        patch({
+                          offer: { ...config.offer, enabled: e.target.checked },
+                        })
+                      }
+                    />
+                    Exibir oferta no vídeo
+                  </label>
+                  <div className="price-grid">
+                    <label className="field-label">
+                      De (R$)
+                      <input
+                        value={config.offer.previous}
+                        onChange={(e) =>
+                          patch({
+                            offer: {
+                              ...config.offer,
+                              previous: e.target.value,
+                            },
+                          })
+                        }
+                      />
+                    </label>
+                    <label className="field-label">
+                      Por (R$)
+                      <input
+                        value={config.offer.current}
+                        onChange={(e) =>
+                          patch({
+                            offer: { ...config.offer, current: e.target.value },
+                          })
+                        }
+                      />
+                    </label>
+                  </div>
+                  <p className="hint">
+                    Os valores vieram do briefing e aguardam conferência no
+                    site. Sem confirmação, o vídeo apresenta apenas o convite
+                    para conhecer a plataforma.
+                  </p>
+                </div>
+              )}
+              <div className="inspector-section direction-note">
+                <Sparkles size={18} />
+                <div>
+                  <strong>Movimento com propósito</strong>
+                  <p>
+                    Câmera, tipografia e profundidade calculadas por quadro. A
+                    mesma composição na prévia e na exportação.
+                  </p>
+                </div>
+              </div>
+            </>
+          )}
+          {tab === "brand" && (
+            <>
+              <div className="inspector-section">
+                <h3>Paleta da campanha</h3>
+                <div className="color-options">
+                  {(
+                    [
+                      ["green", "Verde"],
+                      ["accent", "Destaque"],
+                      ["ink", "Fundo"],
+                    ] as const
+                  ).map(([key, label]) => (
+                    <label key={key}>
+                      <input
+                        type="color"
+                        value={config.theme[key]}
+                        onChange={(e) =>
+                          patch({
+                            theme: { ...config.theme, [key]: e.target.value },
+                          })
+                        }
+                      />
+                      <span>{label}</span>
+                    </label>
+                  ))}
+                </div>
+                <p className="hint">
+                  Paleta provisória. Ajuste com as cores oficiais após consultar
+                  o site.
+                </p>
+              </div>
+              <div className="inspector-section">
+                <h3>Ativos oficiais</h3>
+                <p className="hint">
+                  Importe imagens reais em PNG, JPEG ou WebP. O logotipo mantém
+                  suas proporções.
+                </p>
+                <div className="asset-row">
+                  <span>Logotipo</span>
+                  <span
+                    className={
+                      config.assets.logo ? "asset-ready" : "asset-pending"
+                    }
+                  >
+                    {config.assets.logo ? "Importado" : "Pendente"}
+                  </span>
+                </div>
+                {uploadButton(
+                  "logo",
+                  "Importar logotipo",
+                  "image/png,image/jpeg,image/webp",
+                )}
+                <div className="asset-row">
+                  <span>Captura da plataforma</span>
+                  <span
+                    className={
+                      config.assets.platform ? "asset-ready" : "asset-pending"
+                    }
+                  >
+                    {config.assets.platform ? "Importada" : "Pendente"}
+                  </span>
+                </div>
+                {uploadButton(
+                  "platform",
+                  "Importar screenshot",
+                  "image/png,image/jpeg,image/webp",
+                )}
+                <div className="asset-row">
+                  <span>Imagens das trilhas</span>
+                  <span>{config.assets.courses.length} / 5</span>
+                </div>
+                {uploadButton(
+                  "course",
+                  "Adicionar imagem real",
+                  "image/png,image/jpeg,image/webp",
+                )}
+                {config.assets.courses.map((c, i) => (
+                  <label className="field-label" key={i}>
+                    Trilha {i + 1}
+                    <input
+                      value={c.label}
+                      onChange={(e) =>
+                        patch({
+                          assets: {
+                            ...config.assets,
+                            courses: config.assets.courses.map((x, j) =>
+                              j === i ? { ...x, label: e.target.value } : x,
+                            ),
+                          },
+                        })
+                      }
+                    />
+                  </label>
+                ))}
+              </div>
+            </>
+          )}
+          {tab === "audio" && (
+            <>
+              <div className="inspector-section">
+                <h3>
+                  <AudioLines size={16} /> Narração
+                </h3>
+                <div className="audio-card">
+                  <span className="audio-wave">▂▅▃▇▅▂▆▄▇▃▅▂</span>
+                  <div>
+                    <strong>Áudios enviados</strong>
+                    <small>
+                      {config.format === "short"
+                        ? "Recorte das falas 01 e 06"
+                        : "Seis falas · ordem original"}
+                    </small>
+                  </div>
+                </div>
+                {uploadButton("audio", "Substituir narração", "audio/*")}
+                <label className="field-label">
+                  Volume da voz{" "}
+                  <span>{Math.round(config.audio.voiceVolume * 100)}%</span>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1.5"
+                    step=".01"
+                    value={config.audio.voiceVolume}
+                    onChange={(e) =>
+                      patch({
+                        audio: {
+                          ...config.audio,
+                          voiceVolume: +e.target.value,
+                        },
+                      })
+                    }
+                  />
+                </label>
+                <p className="hint">
+                  Na versão de 35s, as falas foram ajustadas para 1,10×. Uma
+                  nova locução natural não foi gerada.
+                </p>
+              </div>
+              <div className="inspector-section">
+                <h3>Trilha & sound design</h3>
+                <label className="check-row">
+                  <input
+                    type="checkbox"
+                    checked={config.audio.music}
+                    onChange={(e) =>
+                      patch({
+                        audio: { ...config.audio, music: e.target.checked },
+                      })
+                    }
+                  />
+                  Trilha instrumental original
+                </label>
+                <label className="field-label">
+                  Intensidade da trilha
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step=".01"
+                    value={config.audio.musicVolume}
+                    onChange={(e) =>
+                      patch({
+                        audio: {
+                          ...config.audio,
+                          musicVolume: +e.target.value,
+                        },
+                      })
+                    }
+                  />
+                </label>
+                <p className="hint">
+                  Ducking automático aplicado à trilha durante a exportação.
+                </p>
+              </div>
+              <div className="inspector-section">
+                <h3>
+                  <Subtitles size={16} /> Legendas animadas
+                </h3>
+                <label className="check-row">
+                  <input
+                    type="checkbox"
+                    checked={config.captionsEnabled}
+                    disabled={!config.captions.length}
+                    onChange={(e) =>
+                      patch({ captionsEnabled: e.target.checked })
+                    }
+                  />
+                  Exibir legendas revisadas
+                </label>
+                {uploadButton(
+                  "captions",
+                  "Importar SRT / VTT / JSON",
+                  ".srt,.vtt,.json",
+                )}
+                <p className="hint">
+                  {config.captions.length
+                    ? `${config.captions.length} marcações importadas. Confira os tempos na prévia.`
+                    : "A transcrição automática está indisponível. Importe legendas revisadas para sincronizar a fala."}
+                </p>
+              </div>
+            </>
+          )}
+          <div className="verification-note">
+            <Info size={17} />
+            <p>
+              Ativos e oferta aguardam validação no site oficial. Nenhum preço
+              ou número de aulas é exibido por padrão.
+            </p>
+          </div>
+        </aside>
+      </div>
+      <footer className="app-footer">
+        <span>
+          <span className="live-dot" /> Produção determinística
+        </span>
+        <span>React · Remotion · Three.js · FFmpeg</span>
+        <span>AgroSegPlay / Cinematic Experience</span>
+      </footer>
+    </div>
+  );
 }

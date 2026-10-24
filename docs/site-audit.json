@@ -1,0 +1,10 @@
+{
+  "status": "blocked",
+  "url": "https://play.agroseg.net.br/",
+  "date": "2026-10-24T13:48:38.741Z",
+  "error": "page.goto: net::ERR_CERT_AUTHORITY_INVALID at https://play.agroseg.net.br/\nCall log:\n\u001b[2m  - navigating to \"https://play.agroseg.net.br/\", waiting until \"networkidle\"\u001b[22m\n",
+  "logoVerified": false,
+  "courseImagesVerified": false,
+  "commercialInformationVerified": false,
+  "signupUrlVerified": false
+}

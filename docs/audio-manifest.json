@@ -1,0 +1,14 @@
+{
+  "providedSources": [
+    "public/audio/source/fala-01.mp3",
+    "public/audio/source/fala-02.mp3",
+    "public/audio/source/fala-03.mp3",
+    "public/audio/source/fala-04.mp3",
+    "public/audio/source/fala-05.mp3",
+    "public/audio/source/fala-06.mp3"
+  ],
+  "fullVersion": "All six supplied clips, numerical order, tempo 1.10, normalized -16 LUFS",
+  "shortVersion": "Clips 01 and 06 in original order, no new narration generated",
+  "transcriptionVerified": false,
+  "music": "Original synthesized instrumental, no third-party stock recording"
+}

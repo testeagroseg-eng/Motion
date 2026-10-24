@@ -1,13 +1,199 @@
-import {CSSProperties} from 'react';
-import {Img,staticFile,useVideoConfig} from 'remotion';
-import type {ProjectConfig} from '../config/project';
-import {smooth} from '../animations/motion';
-export const sans='"Studio Sans", Arial, sans-serif';
-export function Brand({config,large=false}:{config:ProjectConfig;large?:boolean}){return config.assets.logo?<Img src={staticFile(config.assets.logo)} style={{maxWidth:large?660:300,maxHeight:large?200:74,objectFit:'contain'}}/>:<span style={{fontSize:large?110:37,fontWeight:650,letterSpacing:'-.045em'}}>AgroSeg<span style={{color:config.theme.accent}}>Play</span></span>;}
-export function Title({text,frame,size=114,color='#f6f5ec',center=false}:{text:string;frame:number;size?:number;color?:string;center?:boolean}){return <div style={{fontFamily:sans,fontSize:size,fontWeight:650,lineHeight:1.03,letterSpacing:'-.055em',color,textAlign:center?'center':'left'}}>{text.split('\n').map((line,i)=><div key={i} style={{overflow:'hidden',paddingBottom:14,marginBottom:-8}}><div style={{transform:`translateY(${(1-smooth(frame,i*4,27))*115}%)`,opacity:smooth(frame,i*4,20)}}>{line}</div></div>)}</div>;}
-export function Label({children,color}:{children:React.ReactNode;color:string}){return <div style={{fontFamily:sans,fontSize:21,letterSpacing:5,textTransform:'uppercase',color,marginBottom:30,fontWeight:500}}>{children}</div>;}
-export function Arrow({color,size=50}:{color:string;size?:number}){return <svg width={size} height={size} viewBox="0 0 50 50"><path d="M8 25h32M26 11l14 14-14 14" fill="none" stroke={color} strokeWidth="2.5"/></svg>;}
-export function PlayMark({size=150,color,frame=0}:{size?:number;color:string;frame?:number}){return <div style={{position:'relative',width:size,height:size,display:'grid',placeItems:'center',transform:`rotate(${Math.sin(frame/70)*3}deg)`}}><svg width={size} height={size} viewBox="0 0 160 160"><circle cx="80" cy="80" r="77" fill="none" stroke={color} opacity=".3"/><circle cx="80" cy="80" r="58" fill={color}/><path d="M69 56v48l37-24z" fill="#10271b"/></svg></div>;}
-export function Background({config,light=false}:{config:ProjectConfig;light?:boolean}){return <div style={{position:'absolute',inset:0,background:light?'#edece2':`radial-gradient(ellipse at 78% 28%,${config.theme.green}77 0%,${config.theme.ink} 70%)`}}/>;}
-export function ImagePanel({src,frame,style={}}:{src:string;frame:number;style?:CSSProperties}){return <div style={{overflow:'hidden',...style}}><Img src={staticFile(src)} style={{width:'100%',height:'100%',objectFit:'cover',transform:`scale(${1.03+frame/12000}) translateX(${Math.sin(frame/160)*.7}%)`}}/></div>;}
-export function useLayout(){const {width,height}=useVideoConfig();const wide=width>height;return{width,height,wide,pad:wide?112:86,contentWidth:wide?1696:908};}
+import { CSSProperties } from "react";
+import { Img, staticFile, useVideoConfig } from "remotion";
+import type { ProjectConfig } from "../config/project";
+import { smooth } from "../animations/motion";
+export const sans = '"Studio Sans", Arial, sans-serif';
+export function Brand({
+  config,
+  large = false,
+}: {
+  config: ProjectConfig;
+  large?: boolean;
+}) {
+  return config.assets.logo ? (
+    <Img
+      src={staticFile(config.assets.logo)}
+      style={{
+        maxWidth: large ? 660 : 300,
+        maxHeight: large ? 200 : 74,
+        objectFit: "contain",
+      }}
+    />
+  ) : (
+    <span
+      style={{
+        fontSize: large ? 110 : 37,
+        fontWeight: 650,
+        letterSpacing: "-.045em",
+      }}
+    >
+      AgroSeg<span style={{ color: config.theme.accent }}>Play</span>
+    </span>
+  );
+}
+export function Title({
+  text,
+  frame,
+  size = 114,
+  color = "#f6f5ec",
+  center = false,
+}: {
+  text: string;
+  frame: number;
+  size?: number;
+  color?: string;
+  center?: boolean;
+}) {
+  return (
+    <div
+      style={{
+        fontFamily: sans,
+        fontSize: size,
+        fontWeight: 650,
+        lineHeight: 1.03,
+        letterSpacing: "-.055em",
+        color,
+        textAlign: center ? "center" : "left",
+      }}
+    >
+      {text.split("\n").map((line, i) => (
+        <div
+          key={i}
+          style={{ overflow: "hidden", paddingBottom: 14, marginBottom: -8 }}
+        >
+          <div
+            style={{
+              transform: `translateY(${(1 - smooth(frame, i * 4, 27)) * 115}%)`,
+              opacity: smooth(frame, i * 4, 20),
+            }}
+          >
+            {line}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+export function Label({
+  children,
+  color,
+}: {
+  children: React.ReactNode;
+  color: string;
+}) {
+  return (
+    <div
+      style={{
+        fontFamily: sans,
+        fontSize: 21,
+        letterSpacing: 5,
+        textTransform: "uppercase",
+        color,
+        marginBottom: 30,
+        fontWeight: 500,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+export function Arrow({ color, size = 50 }: { color: string; size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 50 50">
+      <path
+        d="M8 25h32M26 11l14 14-14 14"
+        fill="none"
+        stroke={color}
+        strokeWidth="2.5"
+      />
+    </svg>
+  );
+}
+export function PlayMark({
+  size = 150,
+  color,
+  frame = 0,
+}: {
+  size?: number;
+  color: string;
+  frame?: number;
+}) {
+  return (
+    <div
+      style={{
+        position: "relative",
+        width: size,
+        height: size,
+        display: "grid",
+        placeItems: "center",
+        transform: `rotate(${Math.sin(frame / 70) * 3}deg)`,
+      }}
+    >
+      <svg width={size} height={size} viewBox="0 0 160 160">
+        <circle
+          cx="80"
+          cy="80"
+          r="77"
+          fill="none"
+          stroke={color}
+          opacity=".3"
+        />
+        <circle cx="80" cy="80" r="58" fill={color} />
+        <path d="M69 56v48l37-24z" fill="#10271b" />
+      </svg>
+    </div>
+  );
+}
+export function Background({
+  config,
+  light = false,
+}: {
+  config: ProjectConfig;
+  light?: boolean;
+}) {
+  return (
+    <div
+      style={{
+        position: "absolute",
+        inset: 0,
+        background: light
+          ? "#edece2"
+          : `radial-gradient(ellipse at 78% 28%,${config.theme.green}77 0%,${config.theme.ink} 70%)`,
+      }}
+    />
+  );
+}
+export function ImagePanel({
+  src,
+  frame,
+  style = {},
+}: {
+  src: string;
+  frame: number;
+  style?: CSSProperties;
+}) {
+  return (
+    <div style={{ overflow: "hidden", ...style }}>
+      <Img
+        src={staticFile(src)}
+        style={{
+          width: "100%",
+          height: "100%",
+          objectFit: "cover",
+          transform: `scale(${1.03 + frame / 12000}) translateX(${Math.sin(frame / 160) * 0.7}%)`,
+        }}
+      />
+    </div>
+  );
+}
+export function useLayout() {
+  const { width, height } = useVideoConfig();
+  const wide = width > height;
+  return {
+    width,
+    height,
+    wide,
+    pad: wide ? 112 : 86,
+    contentWidth: wide ? 1696 : 908,
+  };
+}
